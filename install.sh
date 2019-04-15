@@ -94,7 +94,8 @@ function install_apt {
         if [ -z "${SKIP_UPDATE}" ]; then
             sudo apt-get update
         fi
-        if echo $PYVER|grep "3\."; then
+        _PYVER=$1
+        if echo $_PYVER|grep "3\."; then
             sudo apt-get -y install libreadline6-dev python3-dev python3-setuptools python3-yaml python3-pip
         else
             sudo apt-get -y install libreadline6-dev python-dev python-setuptools python-yaml python-pip
@@ -118,7 +119,8 @@ function install_yum {
             PARAMS="$PARAMS --refresh"
         fi
 
-        if echo $PYVER|grep "3\."; then
+        _PYVER=$1
+        if echo $_PYVER|grep "3\."; then
             sudo $CMD $PARAMS install readline-devel python3-devel python3-setuptools python3-yaml python3-pip
         else
             sudo $CMD $PARAMS install readline-devel python-devel python-setuptools python-yaml python-pip
@@ -127,8 +129,8 @@ function install_yum {
 }
 
 function install_packages {
-    install_apt
-    install_yum
+    install_apt $1
+    install_yum $1
 }
 
 if [ "${BACKEND_GDB}" -eq 1 ]; then
@@ -137,7 +139,8 @@ if [ "${BACKEND_GDB}" -eq 1 ]; then
     GDB_PYTHON=$(${GDB} -batch -q --nx -ex 'pi import sys; print(sys.executable)')
     GDB_PYTHON="${GDB_PYTHON/%$GDB_PYVER/}${GDB_PYVER}"
 
-    install_packages
+    install_packages $PYVER
+    install_packages $GDB_PYVER
 
     if [ -z $USER_MODE ]; then
         GDB_SITE_PACKAGES=$(${GDB} -batch -q --nx -ex 'pi import site; print(site.getsitepackages()[0])')
@@ -182,7 +185,8 @@ if [ "${BACKEND_LLDB}" -eq 1 ]; then
         LLDB_SITE_PACKAGES=$(${LLDB} -Qxb --one-line 'script import site; print(site.getusersitepackages())'|tail -1)
     fi
 
-    install_packages
+    install_packages $PYVER
+    install_packages $LLDB_PYVER
 
     if [ "$LLDB_SITE_PACKAGES" == "$GDB_SITE_PACKAGES" ]; then
         echo "Skipping installation for LLDB - same site-packages directory"
@@ -219,7 +223,7 @@ if [ "${BACKEND_GDB}" -ne 1 ] && [ "${BACKEND_LLDB}" -ne 1 ]; then
         PYTHON_SITE_PACKAGES=$(${PYTHON} -c 'import site; print(site.getusersitepackages())')
     fi
 
-    install_packages
+    install_packages $PYVER
 
     # Install Voltron and dependencies
     ${SUDO} ${PYTHON} -m pip install -U $USER_MODE $DEV_MODE .
